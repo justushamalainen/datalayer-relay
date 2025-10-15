@@ -1,0 +1,92 @@
+services:
+  # SSL Certificate Generator (runs first to ensure certificates exist)
+  ssl-init:
+    image: alpine:latest
+    container_name: ssl-init
+    command: sh -c "apk add --no-cache openssl && sh /generate-ssl.sh"
+    volumes:
+      - ./ssl:/ssl
+      - ./generate-ssl.sh:/generate-ssl.sh:ro
+    restart: "no"
+
+  # GTM Preview Server (must start first)
+  gtm-preview:
+    image: gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable
+    container_name: gtm-preview
+    environment:
+      CONTAINER_CONFIG: ${CONTAINER_CONFIG}
+      RUN_AS_PREVIEW_SERVER: "true"
+    restart: unless-stopped
+    networks:
+      - gtm-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # GTM Live Server (starts after preview)
+  gtm-live:
+    image: gcr.io/cloud-tagging-10302018/gtm-cloud-image:stable
+    container_name: gtm-live
+    environment:
+      CONTAINER_CONFIG: ${CONTAINER_CONFIG}
+      PREVIEW_SERVER_URL: "https://host.docker.internal:8889"
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    depends_on:
+      - gtm-preview
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - gtm-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Nginx HTTPS Reverse Proxy for GTM servers
+  nginx:
+    image: nginx:alpine
+    container_name: gtm-nginx
+    ports:
+      - "8888:8888"  # Live server HTTPS
+      - "8889:8889"  # Preview server HTTPS
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      ssl-init:
+        condition: service_completed_successfully
+      gtm-live:
+        condition: service_started
+      gtm-preview:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - gtm-network
+
+  # Template Server for test site
+  template-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: template-server
+    environment:
+      GA4_PROPERTY: ${GA4_PROPERTY}
+      SERVER_CONTAINER_URL: ${SERVER_CONTAINER_URL:-https://localhost:8888}
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - gtm-network
+    depends_on:
+      - nginx
+
+networks:
+  gtm-network:
+    driver: bridge

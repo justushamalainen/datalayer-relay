@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataLayer Relay Test Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            padding: 25px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .instructions h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
+            color: #555;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+
+        .instructions code {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-section h3::before {
+            content: "🧪";
+            font-size: 1.2em;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .button:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .button-description {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .log-area {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 2px solid #333;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .log-header h3 {
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .clear-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-button:hover {
+            background: #c82333;
+        }
+
+        .log-entry {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #2d2d2d;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-timestamp {
+            color: #858585;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .log-event-name {
+            color: #4ec9b0;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .log-data {
+            color: #ce9178;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-left: 15px;
+        }
+
+        .status-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        .empty-log {
+            color: #858585;
+            text-align: center;
+            padding: 40px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DataLayer Relay Test Page</h1>
+            <p>Test your server-side tagging relay implementation</p>
+        </div>
+
+        <div class="instructions">
+            <h2>How to Use This Test Page</h2>
+            <ol>
+                <li>Open your browser's <strong>Developer Console</strong> (F12 or right-click > Inspect > Console tab)</li>
+                <li>Click any test button below to fire a dataLayer event</li>
+                <li>Watch the <strong>Event Log</strong> on the right to see what data was pushed</li>
+                <li>Check the console for detailed output and relay activity</li>
+                <li>Verify events are being sent to your server-side GTM container</li>
+            </ol>
+            <div class="info-box">
+                <strong>Note:</strong> This test page uses the pre-configured relay script (<code>relay-configured.js</code>) pointing to <code>https://localhost:8888</code>. Make sure your Docker GTM containers are running before testing.
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="test-buttons">
+                <div class="test-section">
+                    <h3>Standard Events</h3>
+
+                    <button class="button" onclick="testPageView()">
+                        1. Page View Event
+                    </button>
+                    <div class="button-description">Tracks a page view with URL and referrer</div>
+
+                    <button class="button" onclick="testPurchase()">
+                        2. Purchase Event
+                    </button>
+                    <div class="button-description">E-commerce purchase with items, value, and transaction ID</div>
+
+                    <button class="button" onclick="testAddToCart()">
+                        5. Add to Cart Event
+                    </button>
+                    <div class="button-description">User adds a product to shopping cart</div>
+
+                    <button class="button" onclick="testUserLogin()">
+                        6. User Login Event
+                    </button>
+                    <div class="button-description">User authentication event with method</div>
+                </div>
+
+                <div class="test-section">
+                    <h3>Custom Events</h3>
+
+                    <button class="button" onclick="testFormSubmit()">
+                        3. Form Submit Event
+                    </button>
+                    <div class="button-description">Custom form submission with custom parameters</div>
+
+                    <button class="button" onclick="testCustomEvent()">
+                        4. Custom Event (Bundling Test)
+                    </button>
+                    <div class="button-description">Mix of standard and custom params to test bundling</div>
+                </div>
+            </div>
+
+            <div class="log-section">
+                <div class="log-header">
+                    <h3>Event Log</h3>
+                    <button class="clear-button" onclick="clearLog()">Clear Log</button>
+                </div>
+                <div class="log-area" id="logArea">
+                    <div class="empty-log">No events yet. Click a button to start testing!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-indicator">DataLayer Active</div>
+
+    <script>
+        // Initialize dataLayer before relay script loads
+        window.dataLayer = window.dataLayer || [];
+
+        // Track original push for logging
+        var eventCounter = 0;
+
+        function logEvent(eventName, eventData) {
+            eventCounter++;
+            const timestamp = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('logArea');
+
+            // Remove empty state message
+            if (logArea.querySelector('.empty-log')) {
+                logArea.innerHTML = '';
+            }
+
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <div class="log-timestamp">[${timestamp}] Event #${eventCounter}</div>
+                <div class="log-event-name">Event: ${eventName}</div>
+                <div class="log-data">${JSON.stringify(eventData, null, 2)}</div>
+            `;
+
+            logArea.insertBefore(logEntry, logArea.firstChild);
+
+            // Also log to console
+            console.log('%c[DataLayer Push] ' + eventName, 'color: #4ec9b0; font-weight: bold;', eventData);
+        }
+
+        function clearLog() {
+            const logArea = document.getElementById('logArea');
+            logArea.innerHTML = '<div class="empty-log">Log cleared. Click a button to start testing!</div>';
+            eventCounter = 0;
+        }
+
+        // Test Functions
+        function testPageView() {
+            const eventData = {
+                event: 'page_view',
+                page_location: window.location.href,
+                page_title: document.title,
+                page_referrer: document.referrer || '(direct)'
+            };
+
+            window.dataLayer.push(eventData);
+            logEvent('page_view', eventData);
+        }
+
+        function testPurchase() {
+            const eventData = {
+                event: 'purchase',
+                transaction_id: 'T_' + Date.now(),
+                value: 149.99,
+                currency: 'USD',
+                tax: 12.00,
+                shipping: 5.99,
+                affiliation: 'Test Store',
+                coupon: 'SUMMER2024',
+                items: [
+                    {
+                        item_id: 'SKU_12345',
+                        item_name: 'Wireless Headphones',
+                        item_category: 'Electronics',
+                        item_category2: 'Audio',
+                        item_brand: 'TechBrand',
+                        price: 79.99,
+                        quantity: 1
+                    },
+                    {
+                        item_id: 'SKU_67890',
+                        item_name: 'USB-C Cable',
+                        item_category: 'Accessories',
+                        item_brand: 'CableCo',
+                        price: 19.99,
+                        quantity: 2
+                    }
+                ]
+            };
+
+            window.dataLayer.push(eventData);
+            logEvent('purchase', eventData);
+        }
+
+        function testFormSubmit() {
+            const eventData = {
+                event: 'form_submit',
+                form_id: 'contact_form',
+                form_name: 'Contact Us Form',
+                form_destination: '/thank-you',
+                form_submit_text: 'Submit',
+                // Custom parameters (should be bundled)
+                user_type: 'prospect',
+                form_category: 'lead_generation',
+                page_section: 'footer',
+                custom_field_1: 'test_value',
+                custom_field_2: 123
+            };
+
+            window.dataLayer.push(eventData);
+            logEvent('form_submit', eventData);
+        }
+
+        function testCustomEvent() {
+            const eventData = {
+                event: 'custom_interaction',
+                // Standard parameters (should be at top level)
+                value: 25.50,
+                currency: 'USD',
+                method: 'click',
+                // Custom parameters (should be bundled in 'datalayer')
+                button_text: 'Learn More',
+                section_name: 'hero_banner',
+                user_segment: 'premium',
+                interaction_depth: 3,
+                device_type: 'desktop',
+                session_duration: 125,
+                custom_dimension_1: 'value_a',
+                custom_dimension_2: 'value_b',
+                nested_object: {
+                    key1: 'nested_value_1',
+                    key2: 'nested_value_2'
+                }
+            };
+
+            window.dataLayer.push(eventData);
+            logEvent('custom_interaction', eventData);
+        }
+
+        function testAddToCart() {
+            const eventData = {
+                event: 'add_to_cart',
+                currency: 'USD',
+                value: 79.99,
+                items: [
+                    {
+                        item_id: 'SKU_12345',
+                        item_name: 'Wireless Headphones',
+                        item_category: 'Electronics',
+                        item_category2: 'Audio',
+                        item_brand: 'TechBrand',
+                        price: 79.99,
+                        quantity: 1
+                    }
+                ]
+            };
+
+            window.dataLayer.push(eventData);
+            logEvent('add_to_cart', eventData);
+        }
+
+        function testUserLogin() {
+            const eventData = {
+                event: 'login',
+                method: 'Google',
+                user_id: 'user_' + Math.random().toString(36).substr(2, 9),
+                // Custom parameters
+                login_timestamp: new Date().toISOString(),
+                user_tier: 'premium',
+                first_login: false
+            };
+
+            window.dataLayer.push(eventData);
+            logEvent('login', eventData);
+        }
+
+        // Log initial state
+        console.log('%cDataLayer Test Page Loaded', 'color: #667eea; font-size: 16px; font-weight: bold;');
+        console.log('Initial dataLayer:', window.dataLayer);
+        console.log('Click buttons to test events. Check this console and the on-page log for details.');
+    </script>
+
+    <!-- Load the relay script -->
+    <script src="/src/datalayer-relay.js"></script>
+</body>
+</html>
