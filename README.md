@@ -2,6 +2,8 @@
 
 A lightweight JavaScript library that intercepts dataLayer events and forwards them to a server-side GTM container. This can be used when moving complex applications to server side tagging while moving away from web tagging containers.
 
+![DataLayer Relay Example](example.png)
+
 ---
 
 ## Overview
