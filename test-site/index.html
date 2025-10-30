@@ -350,6 +350,16 @@
                     </button>
                     <div class="button-description">Mix of standard and custom params to test bundling</div>
                 </div>
+
+                <div class="test-section">
+                    <h3>Custom DataLayer Replay</h3>
+                    <textarea id="customDataLayer" rows="10" placeholder='Paste stringified JSON array here, e.g.:\n[\n  {"event": "page_view", "page_location": "https://example.com"},\n  {"event": "purchase", "transaction_id": "T123", "value": 99.99}\n]' style="width: 100%; padding: 10px; border-radius: 6px; border: 2px solid #e9ecef; font-family: 'Courier New', monospace; font-size: 13px; resize: vertical;"></textarea>
+                    <button class="button" onclick="replayCustomDataLayer()" style="margin-top: 10px; width: 100%;">
+                        Replay DataLayer Events
+                    </button>
+                    <div class="button-description">Parse JSON and push each item to dataLayer individually</div>
+                    <div id="replayStatus" style="margin-top: 10px; padding: 10px; border-radius: 6px; display: none;"></div>
+                </div>
             </div>
 
             <div class="log-section">
@@ -531,6 +541,79 @@
 
             window.dataLayer.push(eventData);
             logEvent('login', eventData);
+        }
+
+        function replayCustomDataLayer() {
+            const textarea = document.getElementById('customDataLayer');
+            const statusDiv = document.getElementById('replayStatus');
+            let input = textarea.value.trim();
+
+            // Clear previous status
+            statusDiv.style.display = 'none';
+            statusDiv.className = '';
+
+            if (!input) {
+                showReplayStatus('error', 'Please enter some JSON data to replay');
+                return;
+            }
+
+            // Remove leading and trailing single quotes if present
+            if (input.startsWith("'") && input.endsWith("'")) {
+                input = input.slice(1, -1).trim();
+            }
+
+            try {
+                // Parse the JSON
+                const data = JSON.parse(input);
+
+                // Validate it's an array
+                if (!Array.isArray(data)) {
+                    showReplayStatus('error', 'Input must be a JSON array. Wrap your object in []');
+                    return;
+                }
+
+                if (data.length === 0) {
+                    showReplayStatus('error', 'Array is empty. Add at least one event to replay');
+                    return;
+                }
+
+                // Replay each item
+                let successCount = 0;
+                data.forEach((item, index) => {
+                    if (typeof item === 'object' && item !== null) {
+                        window.dataLayer.push(item);
+                        const eventName = item.event || 'unnamed_event';
+                        logEvent(eventName + ' (replay)', item);
+                        successCount++;
+                    } else {
+                        console.warn(`Skipping item at index ${index}: not an object`, item);
+                    }
+                });
+
+                showReplayStatus('success', `Successfully replayed ${successCount} event(s) to dataLayer`);
+                console.log(`%c[DataLayer Replay] Replayed ${successCount} events`, 'color: #28a745; font-weight: bold;');
+
+            } catch (error) {
+                showReplayStatus('error', 'Invalid JSON: ' + error.message);
+                console.error('JSON Parse Error:', error);
+            }
+        }
+
+        function showReplayStatus(type, message) {
+            const statusDiv = document.getElementById('replayStatus');
+            statusDiv.style.display = 'block';
+
+            if (type === 'error') {
+                statusDiv.style.background = '#f8d7da';
+                statusDiv.style.border = '1px solid #f5c6cb';
+                statusDiv.style.color = '#721c24';
+            } else {
+                statusDiv.style.background = '#d4edda';
+                statusDiv.style.border = '1px solid #c3e6cb';
+                statusDiv.style.color = '#155724';
+            }
+
+            statusDiv.textContent = message;
         }
 
         // Log initial state
