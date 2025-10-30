@@ -81,6 +81,11 @@ services:
       PORT: "3000"
     ports:
       - "3000:3000"
+    volumes:
+      # Mount local files for development (changes reflect immediately)
+      - ./src:/app/src
+      - ./test-site:/app/test-site
+      - ./server.js:/app/server.js
     restart: unless-stopped
     networks:
       - gtm-network

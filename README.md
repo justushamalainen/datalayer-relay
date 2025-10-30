@@ -192,6 +192,77 @@ SERVER_CONTAINER_URL=https://localhost:8888
 
 ---
 
+## Advanced Features
+
+### DataLayer Field Persistence
+
+The relay script supports **persistent fields** - parameters that, once set, are automatically included in all subsequent events until they're updated or the page is reloaded.
+
+#### How It Works
+
+1. You define which fields should persist by editing the `PERSISTENT_FIELDS` array in `src/datalayer-relay.js`
+2. When an event sets one of these fields, the value is stored in memory
+3. All subsequent events automatically include the last known value of each persistent field
+4. If a new event provides a different value for a persistent field, it updates the stored value
+
+#### Example Use Case
+
+```javascript
+// In src/datalayer-relay.js, configure persistent fields:
+var PERSISTENT_FIELDS = ['user_type', 'subscription_tier', 'session_id'];
+```
+
+```javascript
+// Event 1: User logs in
+dataLayer.push({
+  event: 'login',
+  user_type: 'premium',
+  subscription_tier: 'gold'
+});
+
+// Event 2: Page view (no user fields specified)
+dataLayer.push({
+  event: 'page_view',
+  page_title: 'Dashboard'
+});
+// → Automatically includes user_type='premium' and subscription_tier='gold'
+
+// Event 3: Subscription upgraded
+dataLayer.push({
+  event: 'subscription_change',
+  subscription_tier: 'platinum'  // Updates the persistent value
+});
+
+// Event 4: Purchase
+dataLayer.push({
+  event: 'purchase',
+  transaction_id: 'T123',
+  value: 99.99
+});
+// → Automatically includes user_type='premium' and subscription_tier='platinum'
+```
+
+#### Configuration
+
+Edit the `PERSISTENT_FIELDS` array in `src/datalayer-relay.js` (around line 65):
+
+```javascript
+// Default (no persistence)
+var PERSISTENT_FIELDS = [];
+
+// Example with persistence enabled
+var PERSISTENT_FIELDS = ['user_type', 'subscription_tier', 'session_id', 'user_id'];
+```
+
+#### Important Notes
+
+- **Session Scope**: Persistent values are stored in memory and reset on page reload
+- **Precedence**: If an event explicitly sets a persistent field, that value takes precedence and updates the stored value
+- **No Storage**: Values are NOT saved to localStorage or cookies - they exist only during the current page session
+- **Debug Mode**: When `DEBUG = true`, you'll see `[Persistence] Updated field_name = value` logs in the console
+
+---
+
 ## Testing
 
 ### Using the Test Site
