@@ -354,10 +354,14 @@
                 <div class="test-section">
                     <h3>Custom DataLayer Replay</h3>
                     <textarea id="customDataLayer" rows="10" placeholder='Paste stringified JSON array here, e.g.:\n[\n  {"event": "page_view", "page_location": "https://example.com"},\n  {"event": "purchase", "transaction_id": "T123", "value": 99.99}\n]' style="width: 100%; padding: 10px; border-radius: 6px; border: 2px solid #e9ecef; font-family: 'Courier New', monospace; font-size: 13px; resize: vertical;"></textarea>
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        <label for="replayDelay" style="font-size: 14px; color: #495057;">Delay between events (ms):</label>
+                        <input type="number" id="replayDelay" value="500" min="0" max="5000" step="100" style="width: 100px; padding: 5px; border-radius: 4px; border: 1px solid #ced4da; font-size: 14px;">
+                    </div>
                     <button class="button" onclick="replayCustomDataLayer()" style="margin-top: 10px; width: 100%;">
                         Replay DataLayer Events
                     </button>
-                    <div class="button-description">Parse JSON and push each item to dataLayer individually</div>
+                    <div class="button-description">Parse JSON and push each item to dataLayer with throttling</div>
                     <div id="replayStatus" style="margin-top: 10px; padding: 10px; border-radius: 6px; display: none;"></div>
                 </div>
             </div>
@@ -546,7 +550,11 @@
         function replayCustomDataLayer() {
             const textarea = document.getElementById('customDataLayer');
             const statusDiv = document.getElementById('replayStatus');
+            const delayInput = document.getElementById('replayDelay');
             let input = textarea.value.trim();
+
+            // Get delay from input field
+            const replayDelayMs = parseInt(delayInput.value) || 0;
 
             // Clear previous status
             statusDiv.style.display = 'none';
@@ -577,21 +585,36 @@
                     return;
                 }
 
-                // Replay each item
+                // Show initial status
+                if (replayDelayMs > 0) {
+                    showReplayStatus('success', `Starting replay of ${data.length} event(s)... (${replayDelayMs}ms delay between events)`);
+                    console.log(`%c[DataLayer Replay] Starting replay of ${data.length} events with ${replayDelayMs}ms throttle`, 'color: #28a745; font-weight: bold;');
+                } else {
+                    showReplayStatus('success', `Starting instant replay of ${data.length} event(s)... (no delay)`);
+                    console.log(`%c[DataLayer Replay] Starting instant replay of ${data.length} events`, 'color: #28a745; font-weight: bold;');
+                }
+
+                // Replay each item with throttling
                 let successCount = 0;
                 data.forEach((item, index) => {
                     if (typeof item === 'object' && item !== null) {
-                        window.dataLayer.push(item);
-                        const eventName = item.event || 'unnamed_event';
-                        logEvent(eventName + ' (replay)', item);
-                        successCount++;
+                        // Throttle: delay each event by (index * replayDelayMs)
+                        setTimeout(() => {
+                            window.dataLayer.push(item);
+                            const eventName = item.event || 'unnamed_event';
+                            logEvent(eventName + ' (replay)', item);
+                            successCount++;
+
+                            // Update status on last event
+                            if (index === data.length - 1) {
+                                showReplayStatus('success', `Successfully replayed ${successCount} event(s) to dataLayer`);
+                                console.log(`%c[DataLayer Replay] Completed: ${successCount} events sent`, 'color: #28a745; font-weight: bold;');
+                            }
+                        }, index * replayDelayMs);
                     } else {
                         console.warn(`Skipping item at index ${index}: not an object`, item);
                     }
                 });
-
-                showReplayStatus('success', `Successfully replayed ${successCount} event(s) to dataLayer`);
-                console.log(`%c[DataLayer Replay] Replayed ${successCount} events`, 'color: #28a745; font-weight: bold;');
 
             } catch (error) {
                 showReplayStatus('error', 'Invalid JSON: ' + error.message);
