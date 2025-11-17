@@ -24,23 +24,29 @@
   ];
   var PARAM_DENY_PREFIXES = ['gtm'];
 
-  var COMMON_GTAG_PARAM_KEYS = {
-    'page_location': true, 'page_referrer': true, 'page_title': true, 'link_url': true, 'link_domain': true,
-    'engagement_time_msec': true, 'debug_mode': true, 'non_interaction': true, 'user_id': true, 'session_id': true,
-    'campaign': true, 'source': true, 'medium': true, 'term': true, 'content': true, 'gclid': true, 'dclid': true,
-    'transaction_id': true, 'value': true, 'currency': true, 'tax': true, 'shipping': true, 'affiliation': true,
-    'coupon': true, 'payment_type': true, 'shipping_tier': true, 'method': true, 'items': true,
-    'item_list_name': true, 'item_list_id': true, 'creative_name': true, 'creative_slot': true,
-    'location_id': true, 'item_category': true, 'item_category2': true, 'item_category3': true,
-    'item_category4': true, 'item_category5': true, 'item_id': true, 'item_name': true,
-    'search_term': true, 'content_type': true, 'content_id': true, 'video_title': true,
-    'video_url': true, 'video_provider': true
-  };
+  var COMMON_GTAG_PARAMS = [
+    'page_location', 'page_referrer', 'page_title', 'link_url', 'link_domain',
+    'engagement_time_msec', 'debug_mode', 'non_interaction', 'user_id', 'session_id',
+    'campaign', 'source', 'medium', 'term', 'content', 'gclid', 'dclid',
+    'transaction_id', 'value', 'currency', 'tax', 'shipping', 'affiliation',
+    'coupon', 'payment_type', 'shipping_tier', 'method', 'items',
+    'item_list_name', 'item_list_id', 'creative_name', 'creative_slot',
+    'location_id', 'item_category', 'item_category2', 'item_category3',
+    'item_category4', 'item_category5', 'item_id', 'item_name',
+    'search_term', 'content_type', 'content_id', 'video_title',
+    'video_url', 'video_provider'
+  ];
 
   var BUNDLED_PARAM_NAME = 'datalayer';
   var PERSISTENT_FIELDS = [];
   var RELAY_DATALAYER_NAME = 'relayDL';
   var RELAY_VERSION = 'v2.3-' + new Date().toISOString();
+
+  // Convert COMMON_GTAG_PARAMS array to object for fast lookups
+  var COMMON_GTAG_PARAM_KEYS = {};
+  for (var i = 0; i < COMMON_GTAG_PARAMS.length; i++) {
+    COMMON_GTAG_PARAM_KEYS[COMMON_GTAG_PARAMS[i]] = true;
+  }
 
   /******************************
    *  HELPER FUNCTIONS
