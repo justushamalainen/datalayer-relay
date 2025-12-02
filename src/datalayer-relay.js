@@ -42,6 +42,8 @@
   var RELAY_DATALAYER_NAME = 'relayDL';
   var RELAY_VERSION = 'v2.3-' + new Date().toISOString();
 
+  var USE_IDLE_CALLBACK = true;
+
   // Convert COMMON_GTAG_PARAMS array to object for fast lookups
   var COMMON_GTAG_PARAM_KEYS = {};
   for (var i = 0; i < COMMON_GTAG_PARAMS.length; i++) {
@@ -93,6 +95,14 @@
 
   function isEmptyValue(val) {
     return val === null || val === undefined || val === '';
+  }
+
+  function scheduleCallback(fn) {
+    if (USE_IDLE_CALLBACK && typeof requestIdleCallback === 'function') {
+      requestIdleCallback(fn);
+    } else {
+      fn();
+    }
   }
 
   /******************************
@@ -198,9 +208,11 @@
 
   function sendEvent(eventName, params) {
     params.send_to = MEASUREMENT_ID;
-    window.gtag('event', eventName, params);
-    eventStats.sent++;
-    log('[SST forward] (#%o) gtag("event", %o, %o)', eventStats.sent, eventName, params);
+    scheduleCallback(function() {
+      window.gtag('event', eventName, params);
+      eventStats.sent++;
+      log('[SST forward] (#%o) gtag("event", %o, %o)', eventStats.sent, eventName, params);
+    });
   }
 
   function processDataLayerObject(obj) {
@@ -270,10 +282,11 @@
   log('   App DataLayer: window.dataLayer');
   log('   Gtag DataLayer: window.' + RELAY_DATALAYER_NAME);
   log('   Persistent Fields:', PERSISTENT_FIELDS.length ? PERSISTENT_FIELDS : 'None');
+  log('   Idle Callback:', USE_IDLE_CALLBACK ? 'ON' : 'OFF');
   log('   Debug Mode:', DEBUG ? 'ON' : 'OFF');
   log('========================================');
 
-  initializeGtag();
+  scheduleCallback(initializeGtag);
 
   /******************************
    *  DEBUG UTILITIES
