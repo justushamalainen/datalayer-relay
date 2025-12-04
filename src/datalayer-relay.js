@@ -108,12 +108,86 @@
   /******************************
    *  GTAG INITIALIZATION
    ******************************/
+  var gtagOverrideAttempts = [];
+  var currentGtag = null;
+  var ownGtagScriptUrl = null;
+
+  function isFromOwnGtagScript(stack) {
+    if (!ownGtagScriptUrl || !stack) return false;
+    // Check if the stack contains our gtag.js URL
+    return stack.indexOf(ownGtagScriptUrl) !== -1;
+  }
+
   function initializeGtag() {
     // Initialize custom dataLayer for gtag
     window[RELAY_DATALAYER_NAME] = window[RELAY_DATALAYER_NAME] || [];
-    window.gtag = window.gtag || function() {
+
+    // Create our initial gtag function (queue-based)
+    currentGtag = function() {
       window[RELAY_DATALAYER_NAME].push(arguments);
     };
+
+    // Build our gtag.js URL for later comparison
+    var idParam = 'id=' + encodeURIComponent(MEASUREMENT_ID);
+    var layerParam = '&l=' + encodeURIComponent(RELAY_DATALAYER_NAME);
+    ownGtagScriptUrl = (LOAD_GTAG_FROM_SST && SERVER_CONTAINER_URL)
+      ? SERVER_CONTAINER_URL.replace(/\/+$/, '') + '/gtag/js?' + idParam + layerParam
+      : 'https://www.googletagmanager.com/gtag/js?' + idParam + layerParam;
+
+    // Monitor window.gtag with defineProperty
+    try {
+      Object.defineProperty(window, 'gtag', {
+        get: function() {
+          return currentGtag;
+        },
+        set: function(newValue) {
+          var stack = new Error().stack || 'Stack not available';
+          var isFromOwn = isFromOwnGtagScript(stack);
+
+          var attemptInfo = {
+            timestamp: new Date().toISOString(),
+            newValueType: typeof newValue,
+            newValueString: String(newValue).substring(0, 200),
+            stack: stack,
+            accepted: isFromOwn,
+            source: isFromOwn ? 'own-gtag-script' : 'external'
+          };
+          gtagOverrideAttempts.push(attemptInfo);
+
+          if (isFromOwn) {
+            // Accept override from our own gtag.js script
+            currentGtag = newValue;
+            log(
+              '%c[GTAG OVERRIDE ACCEPTED]%c From our gtag.js script',
+              'background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
+              'color: #28a745;'
+            );
+          } else {
+            // Log but accept external overrides too (so gtag still works)
+            // but keep track that it happened
+            console.warn(
+              '%c[GTAG OVERRIDE DETECTED]%c External script tried to set window.gtag',
+              'background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-weight: bold;',
+              'color: #ff9800; font-weight: bold;'
+            );
+            console.warn('New value:', newValue);
+            console.warn('Stack trace:', stack);
+            console.log('Override attempts so far:', gtagOverrideAttempts);
+
+            // Still accept it so things don't break, but we've logged it
+            currentGtag = newValue;
+          }
+        },
+        configurable: false,
+        enumerable: true
+      });
+      log('[Gtag Monitor] window.gtag is now being monitored for overrides');
+      log('[Gtag Monitor] Own script URL:', ownGtagScriptUrl);
+    } catch (e) {
+      // Fallback if defineProperty fails
+      window.gtag = currentGtag;
+      console.warn('[Gtag Monitor] Could not monitor window.gtag:', e);
+    }
 
     // Configure gtag immediately (gtag has built-in queueing)
     window.gtag('js', new Date());
@@ -125,11 +199,7 @@
     // Load gtag.js script
     var script = document.createElement('script');
     script.async = true;
-    var idParam = 'id=' + encodeURIComponent(MEASUREMENT_ID);
-    var layerParam = '&l=' + encodeURIComponent(RELAY_DATALAYER_NAME);
-    script.src = (LOAD_GTAG_FROM_SST && SERVER_CONTAINER_URL)
-      ? SERVER_CONTAINER_URL.replace(/\/+$/, '') + '/gtag/js?' + idParam + layerParam
-      : 'https://www.googletagmanager.com/gtag/js?' + idParam + layerParam;
+    script.src = ownGtagScriptUrl;
     document.head.appendChild(script);
   }
 
@@ -304,6 +374,36 @@
     console.log('   Persistent state:', persistentState);
     console.log('========================================');
     return eventStats;
+  };
+
+  window.dataLayerRelayGtagOverrides = function() {
+    console.log('========================================');
+    console.log('   Gtag Override Attempts');
+    console.log('========================================');
+    console.log('   Own gtag.js URL:', ownGtagScriptUrl);
+    console.log('----------------------------------------');
+    if (gtagOverrideAttempts.length === 0) {
+      console.log('   No override attempts detected');
+    } else {
+      var ownCount = gtagOverrideAttempts.filter(function(a) { return a.accepted; }).length;
+      var externalCount = gtagOverrideAttempts.length - ownCount;
+      console.log('   Total attempts:', gtagOverrideAttempts.length);
+      console.log('   From own script:', ownCount);
+      console.log('   From external:', externalCount);
+      console.log('----------------------------------------');
+      gtagOverrideAttempts.forEach(function(attempt, index) {
+        var sourceLabel = attempt.accepted ? '✅ OWN' : '⚠️  EXTERNAL';
+        console.log('   Attempt #' + (index + 1) + ' [' + sourceLabel + ']:');
+        console.log('     Time:', attempt.timestamp);
+        console.log('     Source:', attempt.source);
+        console.log('     Type:', attempt.newValueType);
+        console.log('     Value:', attempt.newValueString);
+        console.log('     Stack:', attempt.stack);
+        console.log('');
+      });
+    }
+    console.log('========================================');
+    return gtagOverrideAttempts;
   };
 
 })(window, document);
